@@ -87,7 +87,7 @@ contract CheckDotVerificationProtocolContract {
     using Numeric for string;
 
     /**
-     * @dev Manager of the contract to update approvalNumber into the contract.
+     * @dev Manager of the contract.
      */
     address private _owner;
 
@@ -148,6 +148,7 @@ contract CheckDotVerificationProtocolContract {
     }
 
     // Global SECTION
+    
     function getVerificationsLength() public view returns (uint256) {
         return _verificationsIndex;
     }
@@ -161,6 +162,7 @@ contract CheckDotVerificationProtocolContract {
     }
 
     // VIEW SECTION
+
     function getMyValidator() public view returns (Validator memory) {
         Validator storage validator = _validators[msg.sender];
         
@@ -284,16 +286,16 @@ contract CheckDotVerificationProtocolContract {
         bool dot = false;
         uint256 guaranteeToBurn = 0;
         uint256 sameResponseCount = 0;
-        // boucler sur les Reponses
+        // Loop on answers
         for (uint256 o = 0; o < answers.length; o++) {
-            // Comptage total des reponses identiques
+            // Total count of identical answers
             sameResponseCount = 0;
             for (uint256 o2 = 0; o2 < answers.length; o2++) {
                 if (keccak256(bytes(answers[o2].ANSWER)) == keccak256(bytes(answers[o].ANSWER))) { // Qx
                     sameResponseCount += 1;
                 }
             }
-            // Si le nombre total de reponse identiques et superieur à la majorité la reponse est validé.
+            // If the total amount of identical answers is superior to the threshold the answer is valid
             if (sameResponseCount.mul(100).div(answers.length) >= 70) {
                 for (uint256 o2 = 0; o2 < answers.length; o2++) {
                     if (keccak256(bytes(answers[o2].ANSWER)) == keccak256(bytes(answers[o].ANSWER))) {
@@ -302,7 +304,7 @@ contract CheckDotVerificationProtocolContract {
                         ask.LOOSERS.push(answers[o2].WALLET);
                     }
                 }
-                // save score if response is valid
+                // Save score if response is valid
                 if (keccak256(bytes(question.ANSWER)) == keccak256(bytes("Numeric")) && answers[o].ANSWER.isNumeric()) {
                     dot = true;
                 } else if (keccak256(bytes(question.ANSWER)) == keccak256(bytes(answers[o].ANSWER))) {
@@ -314,21 +316,20 @@ contract CheckDotVerificationProtocolContract {
         if (dot == true) {
             ask.SCORE = sameResponseCount.mul(100).div(answers.length);
             ask.STATUS = 3;
-            // burn les fonds sur les mauvais travailleurs.
+            // Burnt the locked warranties for the losers
             for (uint i = 0; i < ask.LOOSERS.length; i++) {
                 Validator storage validator = _validators[ask.LOOSERS[i]];
-                // Guarantee
+
                 validator.LOCKED_WARRANTY_AMOUNT -= ask.CDT_PER_QUESTION;
                 validator.WARRANTY_AMOUNT += ask.CDT_PER_QUESTION.div(2);
                 validator.BURNT_WARRANTY += ask.CDT_PER_QUESTION.div(2);
                 guaranteeToBurn += ask.CDT_PER_QUESTION.div(2);
                 validator.PARTICICATIONS.push(Participation(ask.ID, 0, ask.CDT_PER_QUESTION.div(2)));
             }
-
-            // ajouter les fonds sur les bons travailleurs.
+            // Add rewards to the winners.
             for (uint i = 0; i < ask.WINNERS.length; i++) {
                 Validator storage validator = _validators[ask.WINNERS[i]];
-                // Rewards
+
                 uint256 validatorRewards = ask.REWARD_AMOUNT.div(ask.WINNERS.length);
                 validator.AMOUNT += validatorRewards;
                 validator.LOCKED_WARRANTY_AMOUNT -= _settings.CDT_PER_QUESTION;
@@ -336,7 +337,6 @@ contract CheckDotVerificationProtocolContract {
                 validator.PARTICICATIONS.push(Participation(ask.ID, validatorRewards, 0));
                 ask.REWARD_WALLET_AMOUNT -= validatorRewards;
             }
-
             if (guaranteeToBurn > 0) {
                 require(_cdtToken.burn(guaranteeToBurn) == true, "Error burn");
                 _statistics.TOTAL_CDT_BURNT += guaranteeToBurn;
@@ -375,7 +375,8 @@ contract CheckDotVerificationProtocolContract {
         validator.WARRANTY_AMOUNT = 0;
     }
 
-    // CheckDot Settings
+    // SETTINGS SECTION
+
     function setCdtPerQuestion(uint256 _amount) public onlyOwner {
         _settings.CDT_PER_QUESTION = _amount;
     }
