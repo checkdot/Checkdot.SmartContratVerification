@@ -302,7 +302,6 @@ contract CheckDotVerificationProtocolContract {
                         ask.LOOSERS.push(answers[o2].WALLET);
                     }
                 }
-                ask.SCORE = sameResponseCount.mul(100).div(answers.length);
                 // save score if response is valid
                 if (keccak256(bytes(question.ANSWER)) == keccak256(bytes("Numeric")) && answers[o].ANSWER.isNumeric()) {
                     dot = true;
