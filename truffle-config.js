@@ -2,7 +2,10 @@ const HDWalletProvider = require('@truffle/hdwallet-provider');
 var secret = require("./secret");
 
 module.exports = {
-  plugins: ["solidity-coverage"],
+  plugins: ['solidity-coverage', 'truffle-plugin-verify'],
+  api_keys: {
+    bscscan: 'JT4F344GKEBQG8RUSAPQYTDF5DJ9MAI1X7'
+  },
   networks: {
     development: {
       // truffle deploy --network development
@@ -11,26 +14,20 @@ module.exports = {
       network_id: "*",
       from: "0x7f87C43136F7A4c78788bEb8e39EE400328f184a"
     },
-    test: {
-      // truffle deploy --network test
-      host: "127.0.0.1",
-      port: 7545,
-      network_id: "*"
+    testnet: { // truffle deploy --network testnet
+      provider: () => new HDWalletProvider(secret.MMENOMIC, `https://data-seed-prebsc-1-s1.binance.org:8545`),
+      network_id: 97,
+      confirmations: 10,
+      timeoutBlocks: 200,
+      skipDryRun: true
     },
-    ropsten: {
-      // https://infura.io/dashboard/ethereum
-      // truffle deploy --network ropsten
-      provider: () => new HDWalletProvider(secret.MMENOMIC, `https://ropsten.infura.io/v3/${secret.API_KEY}`),
-      network_id: 3,      // Ropsten's id
-      gas: 5500000        // Ropsten has a lower block limit than mainnet
+    bsc: {
+      provider: () => new HDWalletProvider(secret.MMENOMIC, `https://bsc-dataseed1.binance.org`),
+      network_id: 56,
+      confirmations: 10,
+      timeoutBlocks: 200,
+      skipDryRun: true
     },
-    mainnet: {
-      // https://infura.io/dashboard/ethereum
-      // truffle deploy --network mainnet
-      provider: () => new HDWalletProvider(secret.MMENOMIC, `https://mainnet.infura.io/v3/${secret.API_KEY}`),
-      network_id: 1,      // Ropsten's id
-      gas: 5500000        // Ropsten has a lower block limit than mainnet
-    }
   },
   compilers: {
     solc: {
