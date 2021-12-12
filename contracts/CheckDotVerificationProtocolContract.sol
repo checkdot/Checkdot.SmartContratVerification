@@ -120,7 +120,7 @@ contract CheckDotVerificationProtocolContract {
 
     // MAPPING
 
-    uint256 private                                        _verificationsIndex;
+    uint256 private                                _verificationsIndex;
     mapping(uint256 => Verification) private       _verifications;
     mapping(uint256 => Answer[]) private           _verificationsAnswers;
     mapping(address => Validator) private          _validators;
