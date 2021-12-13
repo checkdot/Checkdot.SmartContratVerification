@@ -4,7 +4,6 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
@@ -59,18 +58,6 @@ struct Answer {
     string ANSWER;
 }
 
-library Numeric {
-    function isNumeric(string memory _value) internal pure returns (bool _ret) {
-        bytes memory _bytesValue = bytes(_value);
-        for(uint i = _bytesValue.length-1; i >= 0 && i < _bytesValue.length; i--) {
-            if (uint8(_bytesValue[i]) < 48 && uint8(_bytesValue[i]) > 57) {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-
 /**
  * @dev Implementation of the {CheckDot Smart Contract Verification} Contract Version 1
  * 
@@ -84,7 +71,6 @@ library Numeric {
 contract CheckDotVerificationProtocolContract {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
-    using Numeric for string;
 
     /**
      * @dev Manager of the contract.
@@ -130,6 +116,7 @@ contract CheckDotVerificationProtocolContract {
     event UpdateVerification(uint256 id, address initiator);
 
     constructor(address cdtTokenAddress) {
+        require(msg.sender != address(0), "Deploy from the zero address");
         _verificationsIndex = 1;
         _cdtToken = IERC20(cdtTokenAddress);
         _owner = msg.sender;
@@ -297,24 +284,24 @@ contract CheckDotVerificationProtocolContract {
             }
             // If the total amount of identical answers is superior to the threshold the answer is valid
             if (sameResponseCount.mul(100).div(answers.length) >= 70) {
+                uint256 totalGoodResponse = 0;
                 for (uint256 o2 = 0; o2 < answers.length; o2++) {
+                    if (keccak256(bytes(question.ANSWER)) == keccak256(bytes(answers[o2].ANSWER))) {
+                        totalGoodResponse += 1;
+                    }
                     if (keccak256(bytes(answers[o2].ANSWER)) == keccak256(bytes(answers[o].ANSWER))) {
                         ask.WINNERS.push(answers[o2].WALLET);
                     } else {
                         ask.LOOSERS.push(answers[o2].WALLET);
                     }
                 }
-                // Save score if response is valid
-                if (keccak256(bytes(question.ANSWER)) == keccak256(bytes("Numeric")) && answers[o].ANSWER.isNumeric()) {
-                    dot = true;
-                } else if (keccak256(bytes(question.ANSWER)) == keccak256(bytes(answers[o].ANSWER))) {
-                    dot = true;
-                }
+                dot = true;
+                // Save score
+                ask.SCORE = totalGoodResponse.mul(100).div(answers.length);
                 break ;
             }
         }
         if (dot == true) {
-            ask.SCORE = sameResponseCount.mul(100).div(answers.length);
             ask.STATUS = 3;
             // Burnt the locked warranties for the losers
             for (uint i = 0; i < ask.LOOSERS.length; i++) {

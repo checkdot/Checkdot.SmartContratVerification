@@ -4,7 +4,7 @@ var secret = require("./secret");
 module.exports = {
   plugins: ['solidity-coverage', 'truffle-plugin-verify'],
   api_keys: {
-    bscscan: 'JT4F344GKEBQG8RUSAPQYTDF5DJ9MAI1X7'
+    bscscan: secret.API_KEY
   },
   networks: {
     development: {
@@ -21,7 +21,7 @@ module.exports = {
       timeoutBlocks: 200,
       skipDryRun: true
     },
-    bsc: {
+    bsc: { // truffle deploy --network bsc
       provider: () => new HDWalletProvider(secret.MMENOMIC, `https://bsc-dataseed1.binance.org`),
       network_id: 56,
       confirmations: 10,
