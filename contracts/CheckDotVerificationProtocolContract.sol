@@ -195,6 +195,7 @@ contract CheckDotVerificationProtocolContract {
         require(_cdtToken.transferFrom(msg.sender, address(this), amount) == true, "Error transfer");
         validator.WALLET = msg.sender;
         validator.WARRANTY_AMOUNT += amount;
+        _statistics.TOTAL_CDT_WARRANTY += amount;
     }
 
     function init(uint256 questionId, string calldata data, uint256 numberOfAnswerCap) public {
@@ -358,6 +359,7 @@ contract CheckDotVerificationProtocolContract {
 
         require(amount > 0, "Insufficient balance");
         require(_cdtToken.transfer(validator.WALLET, amount) == true, "Error transfer");
+        _statistics.TOTAL_CDT_WARRANTY -= validator.WARRANTY_AMOUNT;
         validator.AMOUNT = 0;
         validator.WARRANTY_AMOUNT = 0;
     }
@@ -385,6 +387,7 @@ contract CheckDotVerificationProtocolContract {
         
         questionWithAnswer.ID = id;
         questionWithAnswer.QUESTION = question;
+        delete questionWithAnswer.ANSWERS;
         for (uint256 i = 0; i < answers.length; i++) {
             questionWithAnswer.ANSWERS.push(answers[i]);
         }
