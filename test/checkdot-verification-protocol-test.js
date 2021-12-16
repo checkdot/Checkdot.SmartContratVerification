@@ -70,6 +70,20 @@ contract('CheckDotSmartContractVerificationContract', async (accounts) => {
       from: owner,
     });
 
+    await verificationContractInstance.setQuestion("1",
+      `Please open the pdf document provided above.
+      Then search the document for the word or and write the following text:
+      #hash
+      If the text is not written in the document please answer with No.
+      If it is not, please answer with Yes.`,
+      [
+        "Yes", "No"
+      ],
+      "Yes",
+    {
+      from: owner,
+    });
+
     const question = await verificationContractInstance.getQuestion("1", {
       from: owner,
     });
@@ -78,6 +92,12 @@ contract('CheckDotSmartContractVerificationContract', async (accounts) => {
       question.ID,
       1,
       'Question isn\'t added'
+    );
+
+    assert.equal(
+      question.ANSWERS.length,
+      2,
+      'Question answers: ' + question.ANSWERS
     );
 
   });
