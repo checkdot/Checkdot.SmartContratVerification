@@ -16,6 +16,7 @@ struct Verification {
     address INITIATOR;
     uint256 ID;
     uint256 BLOCK_NUMBER;
+    uint256 BLOCK_TIMESTAMP;
     uint256 REWARD_AMOUNT;
     uint256 REWARD_WALLET_AMOUNT;
     uint256 SCORE;
@@ -221,6 +222,7 @@ contract CheckDotVerificationProtocolContract {
         ask.INITIATOR = msg.sender;
         ask.ID = index;
         ask.BLOCK_NUMBER = block.number;
+        ask.BLOCK_TIMESTAMP = block.timestamp;
         ask.REWARD_AMOUNT = rewardsAmount;
         ask.REWARD_WALLET_AMOUNT = rewardsAmount;
         ask.NUMBER_OF_ANSWER_SLOTS = numberOfAnswerCap;
