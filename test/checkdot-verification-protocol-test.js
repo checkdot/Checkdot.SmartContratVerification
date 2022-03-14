@@ -1,6 +1,6 @@
 const truffleAssert = require('truffle-assertions');
 const contractTruffle = require('truffle-contract');
-const { toWei, toBN } = web3.utils;
+const { toWei, toBN, fromWei } = web3.utils;
 
 /* CheckDotToken Provider */
 const checkdotTokenArtifact = require('../../CheckDot.CheckDotERC20Contract/build/contracts/CheckDot.json');
@@ -38,6 +38,22 @@ contract('CheckDotSmartContractVerificationContract', async (accounts) => {
     validatorFour = accounts[4];
     validatorFive = accounts[5];
   });
+
+  it('Set 1 cdtPerQuestion', async () => {
+    await verificationContractInstance.setCdtPerQuestion(toWei('1', 'ether'), {
+      from: owner
+    });
+
+    const settings = await verificationContractInstance.getSettings({
+      from: owner
+    });
+
+    assert.equal(
+      settings.CDT_PER_QUESTION.toString(),
+      toWei('1', 'ether').toString(),
+      'CDTPerQuestion Not equals to 1'
+    );
+  })
 
   it('Set min cap', async () => {
     await verificationContractInstance.setMinCap("5", {
@@ -118,19 +134,20 @@ contract('CheckDotSmartContractVerificationContract', async (accounts) => {
       commitHash: "1f68a6acd49ae28655fae5882384deb69afd2a7d"
     });
 
-    const amount = toWei('5.05', 'ether');
-
     const settings = await verificationContractInstance.getSettings({
       from: owner
     });
 
-    await verificationContractInstance.init("1", data, "5", {
+    await verificationContractInstance.createNewVerification(["1"], data, "5", (((new Date()).getTime() - (24*60*10000)) / 1000).toFixed(0), {
       from: owner
     });
 
     // compare initiator current CDT balance with initial balance
     const initiatorCurrentBalance = await tokenInstance.balanceOf(owner);
     
+    const amount = toWei('5.05', 'ether');
+
+    console.log(fromWei(initiatorCurrentBalance.toString()), fromWei(initiatorInitialBalance.toString()));
     assert.equal(
       initiatorCurrentBalance.toString(),
       initiatorInitialBalance.sub(toBN(amount)).toString(),
@@ -226,7 +243,7 @@ contract('CheckDotSmartContractVerificationContract', async (accounts) => {
     });
 
 
-    await verificationContractInstance.evaluate(verification.ID, {
+    await verificationContractInstance.evaluate([verification.ID], {
       from: owner
     });
 

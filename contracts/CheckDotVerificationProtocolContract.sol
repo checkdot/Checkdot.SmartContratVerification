@@ -15,10 +15,10 @@ interface IERC20 {
 struct Verification {
     address INITIATOR;
     uint256 ID;
-    uint256 BLOCK_NUMBER;
-    uint256 BLOCK_TIMESTAMP;
+    uint256 START_TIME;
     uint256 REWARD_AMOUNT;
     uint256 REWARD_WALLET_AMOUNT;
+    uint256 BLOCK_TIMESTAMP;
     uint256 SCORE;
     string QUESTION;
     string[] ANSWERS;
@@ -199,12 +199,15 @@ contract CheckDotVerificationProtocolContract {
         _statistics.TOTAL_CDT_WARRANTY += amount;
     }
 
-    function init(uint256 questionId, string calldata data, uint256 numberOfAnswerCap) public {
-        QuestionWithAnswer storage question = _questions[questionId];
-
-        require(question.ID == questionId, "Question not found");
-        require(bytes(data).length <= 2000, "Top long data length");
+    function createNewVerification(uint256[] calldata questions, string calldata data, uint256 numberOfAnswerCap, uint256 startTime) public {
         require(numberOfAnswerCap >= _settings.MIN_CAP && numberOfAnswerCap <= _settings.MAX_CAP, "Invalid cap");
+        require(bytes(data).length <= 2000, "Top long data length");
+
+        // check if questions exists
+        for (uint i = 0; i < questions.length; i++) {
+            QuestionWithAnswer storage question = _questions[questions[i]];
+            require(question.ID == questions[i], "Question not found");
+        }
 
         uint256 rewardsAmount = _settings.CDT_PER_QUESTION.mul(numberOfAnswerCap);
         uint256 checkDotFees = rewardsAmount.mul(_settings.SERVICE_FEE).div(100);
@@ -213,29 +216,34 @@ contract CheckDotVerificationProtocolContract {
         require(_cdtToken.balanceOf(msg.sender) >= transactionCost, "Insufficient balance");
         require(_cdtToken.transferFrom(msg.sender, address(this), transactionCost) == true, "Error transfer");
         require(_cdtToken.burn(checkDotFees.div(2)) == true, "Error burn");
+
         _statistics.TOTAL_CDT_BURNT += checkDotFees.div(2);
         _statistics.TOTAL_CDT_FEE += checkDotFees;
         _checkDotCollectedFeesAmount += checkDotFees.div(2);
-        uint256 index = _verificationsIndex++;
-        Verification storage ask = _verifications[index];
 
-        ask.INITIATOR = msg.sender;
-        ask.ID = index;
-        ask.BLOCK_NUMBER = block.number;
-        ask.BLOCK_TIMESTAMP = block.timestamp;
-        ask.REWARD_AMOUNT = rewardsAmount;
-        ask.REWARD_WALLET_AMOUNT = rewardsAmount;
-        ask.NUMBER_OF_ANSWER_SLOTS = numberOfAnswerCap;
-        ask.DATA = data;
-        ask.QUESTION = question.QUESTION;
-        for (uint i = 0; i < question.ANSWERS.length; i++) {
-            ask.ANSWERS.push(question.ANSWERS[i]);
+        for (uint i = 0; i < questions.length; i++) {
+            uint256 index = _verificationsIndex++;
+            QuestionWithAnswer storage question = _questions[questions[i]];
+            Verification storage ask = _verifications[index];
+
+            ask.INITIATOR = msg.sender;
+            ask.ID = index;
+            ask.START_TIME = startTime;
+            ask.BLOCK_TIMESTAMP = block.timestamp;
+            ask.REWARD_AMOUNT = rewardsAmount;
+            ask.REWARD_WALLET_AMOUNT = rewardsAmount;
+            ask.NUMBER_OF_ANSWER_SLOTS = numberOfAnswerCap;
+            ask.DATA = data;
+            ask.QUESTION = question.QUESTION;
+            for (uint o = 0; o < question.ANSWERS.length; o++) {
+                ask.ANSWERS.push(question.ANSWERS[o]);
+            }
+            ask.QUESTION_ID = question.ID;
+            ask.STATUS = 1;
+            ask.CDT_PER_QUESTION = _settings.CDT_PER_QUESTION;
+
+            emit NewVerification(ask.ID, ask.INITIATOR);
         }
-        ask.QUESTION_ID = questionId;
-        ask.STATUS = 1;
-        ask.CDT_PER_QUESTION = _settings.CDT_PER_QUESTION;
-
-        emit NewVerification(ask.ID, ask.INITIATOR);
     }
 
     function reply(
@@ -250,6 +258,7 @@ contract CheckDotVerificationProtocolContract {
 
         require(validator.WARRANTY_AMOUNT >= ask.CDT_PER_QUESTION, "Not Eligible");
         require(ask.STATUS == 1, "Ended");
+        require(ask.START_TIME <= block.timestamp, "Not started");
         require(ask.INITIATOR != msg.sender, "Not authorized");
         require(answers.length < ask.NUMBER_OF_ANSWER_SLOTS, "Ended");
         for (uint256 i = 0; i < ask.PARTICIPATORS.length; i++) {
@@ -266,11 +275,20 @@ contract CheckDotVerificationProtocolContract {
         emit UpdateVerification(ask.ID, ask.INITIATOR);
     }
 
-    function evaluate(uint256 _verificationIndex) public {
-        require(_verificationIndex < _verificationsIndex, "Verification not found");
-        Verification storage ask = _verifications[_verificationIndex];
-        require(ask.STATUS == 2, "Not authorized");
+    function evaluate(uint256[] calldata _verificationsIds) public {
+        // check if exists and if as good status
+        for (uint256 i = 0; i < _verificationsIds.length; i++) {
+            require(_verificationsIds[i] < _verificationsIndex, "Verification not found");
+            Verification storage ask = _verifications[_verificationsIds[i]];
+            require(ask.STATUS == 2, "Not authorized");
+        }
+        for (uint256 i = 0; i < _verificationsIds.length; i++) {
+            evaluateOneVerification(_verificationsIds[i]);
+        }
+    }
 
+    function evaluateOneVerification(uint256 _verificationIndex) private {
+        Verification storage ask = _verifications[_verificationIndex];
         Answer[] storage answers = _verificationsAnswers[_verificationIndex];
         QuestionWithAnswer storage question = _questions[ask.QUESTION_ID];
         bool dot = false;
@@ -341,7 +359,7 @@ contract CheckDotVerificationProtocolContract {
                 validator.LOCKED_WARRANTY_AMOUNT -= ask.CDT_PER_QUESTION;
             }
             require(_cdtToken.transfer(ask.INITIATOR, ask.REWARD_WALLET_AMOUNT) == true, "Error transfer");
-            ask.REWARD_AMOUNT = 0;
+            ask.REWARD_WALLET_AMOUNT = 0;
         }
 
         emit UpdateVerification(ask.ID, ask.INITIATOR);
